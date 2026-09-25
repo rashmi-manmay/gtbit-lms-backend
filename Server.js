@@ -82,13 +82,17 @@ mongoose.connect(process.env.MONGO_URI)
 /* ================= LEAVE SCHEMA ================= */
 const LeaveSchema = new mongoose.Schema({
   user: String,
+  userEmail: String,
   name: String,
   designation: String,
   leaveFrom: String,
   leaveTo: String,
   reason: String,
   leaveType: String,
+  otherLeaveType: String,
   adjustments: String,
+  dayType: String,
+  halfType: String,
   status: { type: String, default: "Pending" },
   rejectReason: String,
   notification: String
@@ -155,12 +159,25 @@ app.post("/api/login", async (req, res) => {
 });
 
 /* ================= LEAVE APPLY ================= */
+/* ================= LEAVE APPLY ================= */
 app.post("/api/leaves", async (req, res) => {
   try {
-    const newLeave = new Leave(req.body);
+    const data = req.body.formData
+      ? {
+          ...req.body.formData,
+          user: req.body.userEmail,
+          userEmail: req.body.userEmail,
+          status: req.body.status || "Pending"
+        }
+      : {
+          ...req.body,
+          user: req.body.user || req.body.userEmail,
+          userEmail: req.body.userEmail || req.body.user
+        };
+
+    const newLeave = new Leave(data);
     await newLeave.save();
 
-    // ✅ EMAIL TO HOD
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: "hoditgtbit@gmail.com",
@@ -168,17 +185,22 @@ app.post("/api/leaves", async (req, res) => {
       text: `
 New Leave Request
 
-Name: ${req.body.name}
-From: ${req.body.leaveFrom}
-To: ${req.body.leaveTo}
-Reason: ${req.body.reason}
+Name: ${data.name}
+Designation: ${data.designation}
+From: ${data.leaveFrom}
+To: ${data.leaveTo}
+Reason: ${data.reason}
+Leave Type: ${data.leaveType}
+Adjustment: ${data.adjustments}
+Day Type: ${data.dayType || "-"}
+Half Type: ${data.halfType || "-"}
       `
     });
 
     res.json(newLeave);
 
   } catch (err) {
-    console.log(err);
+    console.log("LEAVE APPLY ERROR:", err);
     res.status(500).json({ error: "Failed to save leave" });
   }
 });
