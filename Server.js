@@ -22,10 +22,11 @@ const transporter = nodemailer.createTransport({
 /* ================= MIDDLEWARE ================= */
 app.use(cors({
   origin: [
-    "http://localhost:3000",
-    "https://gtbit-it-lms.netlify.app",
-    "https://idyllic-sunshine-a44fa9.netlify.app"
-  ],
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://gtbit-it-lms.netlify.app",
+  "https://idyllic-sunshine-a44fa9.netlify.app"
+],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
