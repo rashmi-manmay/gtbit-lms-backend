@@ -216,12 +216,26 @@ app.get("/api/leaves", async (req, res) => {
   try {
     const leaves = await Leave.find().lean();
 
-    const formattedLeaves = leaves.map(leave => ({
-      ...leave,
-      // backward-compat: provide both keys
-      userEmail: leave.userEmail || leave.user || leave.email,
-      email: leave.email || leave.userEmail || leave.user
-    }));
+    const formattedLeaves = leaves.map(leave => {
+      let days = 0;
+
+      if (leave.leaveFrom && leave.leaveTo) {
+        const from = new Date(leave.leaveFrom);
+        const to = new Date(leave.leaveTo);
+
+        days = Math.ceil(
+          (to - from) / (1000 * 60 * 60 * 24)
+        ) + 1;
+      }
+
+      return {
+        ...leave,
+        userEmail: leave.userEmail || leave.user || leave.email,
+        email: leave.email || leave.userEmail || leave.user,
+        days: days,
+        totalDays: days
+      };
+    });
 
     res.json(formattedLeaves);
 
