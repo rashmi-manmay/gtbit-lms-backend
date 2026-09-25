@@ -57,7 +57,7 @@ const createDefaultHOD = async () => {
       await User.create({
         name: "HOD",
         email: "itgtbit@gmail.com",
-        password: hashedPassword,
+        password: Test12345,
         role: "hod",
         designation: "Head of Department"
       });
