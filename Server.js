@@ -211,13 +211,16 @@ Half Type: ${data.halfType || "-"}
 });
 
 /* ================= GET LEAVES ================= */
+/* ================= GET LEAVES ================= */
 app.get("/api/leaves", async (req, res) => {
   try {
     const leaves = await Leave.find().lean();
 
     const formattedLeaves = leaves.map(leave => ({
       ...leave,
-      userEmail: leave.userEmail || leave.user
+      // backward-compat: provide both keys
+      userEmail: leave.userEmail || leave.user || leave.email,
+      email: leave.email || leave.userEmail || leave.user
     }));
 
     res.json(formattedLeaves);
