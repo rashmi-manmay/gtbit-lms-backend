@@ -185,7 +185,7 @@ app.post("/api/leaves", async (req, res) => {
     // Send email separately
     transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: "hoditgtbit@gmail.com",
+      to: "itgtbit@gmail.com",
       subject: "New Leave Request",
       text: `
 New Leave Request
