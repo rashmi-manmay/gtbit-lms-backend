@@ -49,26 +49,36 @@ const User = mongoose.model("User", UserSchema);
 /* ================= DEFAULT HOD ================= */
 const createDefaultHOD = async () => {
   try {
-    const existingHOD = await User.findOne({ role: "hod" });
+    const hodPassword = "Test12345";
+    const hashedPassword = await bcrypt.hash(hodPassword, 10);
 
-    if (!existingHOD) {
-      const hashedPassword = await bcrypt.hash("hod123", 10);
+    const existingHOD = await User.findOne({
+      email: "itgtbit@gmail.com"
+    });
 
+    if (existingHOD) {
+      existingHOD.name = "HOD";
+      existingHOD.role = "hod";
+      existingHOD.designation = "Head of Department";
+      existingHOD.password = hashedPassword;
+
+      await existingHOD.save();
+
+      console.log("✅ HOD password reset successfully");
+    } else {
       await User.create({
         name: "HOD",
         email: "itgtbit@gmail.com",
-        password: Test12345,
+        password: hashedPassword,
         role: "hod",
         designation: "Head of Department"
       });
 
       console.log("✅ Default HOD created");
-    } else {
-      console.log("ℹ️ HOD already exists");
     }
 
   } catch (err) {
-    console.log("❌ HOD creation error:", err);
+    console.log("❌ HOD creation/reset error:", err);
   }
 };
 
