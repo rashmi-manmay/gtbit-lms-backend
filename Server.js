@@ -160,6 +160,7 @@ app.post("/api/login", async (req, res) => {
 
 /* ================= LEAVE APPLY ================= */
 /* ================= LEAVE APPLY ================= */
+/* ================= LEAVE APPLY ================= */
 app.post("/api/leaves", async (req, res) => {
   try {
     const data = req.body.formData
@@ -178,7 +179,11 @@ app.post("/api/leaves", async (req, res) => {
     const newLeave = new Leave(data);
     await newLeave.save();
 
-    await transporter.sendMail({
+    // Respond immediately after saving
+    res.json(newLeave);
+
+    // Send email separately
+    transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: "hoditgtbit@gmail.com",
       subject: "New Leave Request",
@@ -195,9 +200,9 @@ Adjustment: ${data.adjustments}
 Day Type: ${data.dayType || "-"}
 Half Type: ${data.halfType || "-"}
       `
-    });
-
-    res.json(newLeave);
+    })
+    .then(() => console.log("✅ Leave email sent to HOD"))
+    .catch(err => console.log("⚠️ Leave email failed:", err.message));
 
   } catch (err) {
     console.log("LEAVE APPLY ERROR:", err);
