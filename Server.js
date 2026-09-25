@@ -23,9 +23,12 @@ const transporter = nodemailer.createTransport({
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://gtbit-it-lms.netlify.app"
+    "https://gtbit-it-lms.netlify.app",
+    "https://idyllic-sunshine-a44fa9.netlify.app"
   ],
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
 
