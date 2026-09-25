@@ -212,10 +212,21 @@ Half Type: ${data.halfType || "-"}
 
 /* ================= GET LEAVES ================= */
 app.get("/api/leaves", async (req, res) => {
-  const leaves = await Leave.find();
-  res.json(leaves);
-});
+  try {
+    const leaves = await Leave.find().lean();
 
+    const formattedLeaves = leaves.map(leave => ({
+      ...leave,
+      userEmail: leave.userEmail || leave.user
+    }));
+
+    res.json(formattedLeaves);
+
+  } catch (err) {
+    console.log("GET LEAVES ERROR:", err);
+    res.status(500).json({ error: "Failed to fetch leaves" });
+  }
+});
 /* ================= UPDATE LEAVE ================= */
 app.put("/api/leaves/:id", async (req, res) => {
   try {
