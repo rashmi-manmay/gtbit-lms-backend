@@ -25,7 +25,7 @@ app.use(cors({
     "http://localhost:3000",
     "http://localhost:5173",
     "https://gtbit-it-lms.netlify.app",
-    "https://idyllic-sunshine-a44fa9.netlify.app"
+    "https://idyllic-sunshine-a44fa9.netlify.app",
     "https://hilarious-banoffee-005913.netlify.app"
   ],
   credentials: true,
