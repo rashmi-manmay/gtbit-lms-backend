@@ -22,15 +22,16 @@ const transporter = nodemailer.createTransport({
 /* ================= MIDDLEWARE ================= */
 app.use(cors({
   origin: [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "https://gtbit-it-lms.netlify.app",
-  "https://idyllic-sunshine-a44fa9.netlify.app"
-],
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://gtbit-it-lms.netlify.app",
+    "https://idyllic-sunshine-a44fa9.netlify.app"
+  ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 app.use(express.json());
 
 /* ================= USER SCHEMA ================= */
@@ -49,8 +50,7 @@ const User = mongoose.model("User", UserSchema);
 /* ================= DEFAULT HOD ================= */
 const createDefaultHOD = async () => {
   try {
-    const hodPassword = "Test12345";
-    const hashedPassword = await bcrypt.hash(hodPassword, 10);
+    const hashedPassword = await bcrypt.hash("Test12345", 10);
 
     const existingHOD = await User.findOne({
       email: "itgtbit@gmail.com"
@@ -61,10 +61,7 @@ const createDefaultHOD = async () => {
       existingHOD.role = "hod";
       existingHOD.designation = "Head of Department";
       existingHOD.password = hashedPassword;
-
       await existingHOD.save();
-
-      console.log("✅ HOD password reset successfully");
     } else {
       await User.create({
         name: "HOD",
@@ -73,12 +70,11 @@ const createDefaultHOD = async () => {
         role: "hod",
         designation: "Head of Department"
       });
-
-      console.log("✅ Default HOD created");
     }
 
+    console.log("✅ HOD ready");
   } catch (err) {
-    console.log("❌ HOD creation/reset error:", err);
+    console.log("❌ HOD error:", err);
   }
 };
 
@@ -90,38 +86,21 @@ mongoose.connect(process.env.MONGO_URI)
   })
   .catch(err => console.log("DB Error:", err));
 
-/* ================= LEAVE SCHEMA ================= */
-const LeaveSchema = new mongoose.Schema({
-  user: String,
-  userEmail: String,
-  name: String,
-  designation: String,
-  leaveFrom: String,
-  leaveTo: String,
-  reason: String,
-  leaveType: String,
-  otherLeaveType: String,
-  adjustments: String,
-  dayType: String,
-  halfType: String,
-  status: { type: String, default: "Pending" },
-  rejectReason: String,
-  notification: String
-});
-
-const Leave = mongoose.model("Leave", LeaveSchema);
-
 /* ================= REGISTER ================= */
 app.post("/api/register", async (req, res) => {
   try {
     const { name, email, password, role, designation } = req.body;
 
-    const existing = await User.findOne({ email: email.trim().toLowerCase() });
-    if (existing) return res.status(400).json({ message: "User already exists" });
+    const existing = await User.findOne({
+      email: email.trim().toLowerCase()
+    });
+
+    if (existing)
+      return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({
+    await User.create({
       name,
       email: email.trim().toLowerCase(),
       password: hashedPassword,
@@ -129,10 +108,7 @@ app.post("/api/register", async (req, res) => {
       designation
     });
 
-    await user.save();
-
     res.json({ message: "Registered successfully" });
-
   } catch (err) {
     res.status(500).json({ error: "Register failed" });
   }
@@ -146,10 +122,13 @@ app.post("/api/login", async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user) return res.status(400).json({ message: "User not found" });
+    if (!user)
+      return res.status(400).json({ message: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
+
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid password" });
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -169,136 +148,114 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-/* ================= LEAVE APPLY ================= */
-/* ================= LEAVE APPLY ================= */
+/* ================= FORGOT PASSWORD ================= */
+app.post("/api/forgot-password", async (req, res) => {
+  try {
+    const email = String(req.body.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email address is required."
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.json({
+        message:
+          "If this email is registered, a reset link has been sent."
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    user.resetToken = resetToken;
+    user.resetTokenExpire = Date.now() + 30 * 60 * 1000;
+
+    await user.save();
+
+  const resetLink =
+  `https://hilarious-banoffee-005913.netlify.app/reset-password?token=${resetToken}`;
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "GTBIT LMS Password Reset",
+      text: `Reset your password:\n\n${resetLink}\n\nValid for 30 minutes.`
+    });
+
+    res.json({
+      message: "Reset link sent if email exists."
+    });
+
+  } catch (err) {
+    console.log("FORGOT PASSWORD ERROR:", err);
+    res.status(500).json({
+      message: "Failed to process request"
+    });
+  }
+});
+
 /* ================= LEAVE APPLY ================= */
 app.post("/api/leaves", async (req, res) => {
   try {
-    const data = req.body.formData
-      ? {
-          ...req.body.formData,
-          user: req.body.userEmail,
-          userEmail: req.body.userEmail,
-          status: req.body.status || "Pending"
-        }
-      : {
-          ...req.body,
-          user: req.body.user || req.body.userEmail,
-          userEmail: req.body.userEmail || req.body.user
-        };
+    const Leave = mongoose.model("Leave");
 
-    const newLeave = new Leave(data);
+    const newLeave = new Leave(req.body);
     await newLeave.save();
 
-    // Respond immediately after saving
     res.json(newLeave);
 
-    // Send email separately
     transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: "itgtbit@gmail.com",
       subject: "New Leave Request",
-      text: `
-New Leave Request
-
-Name: ${data.name}
-Designation: ${data.designation}
-From: ${data.leaveFrom}
-To: ${data.leaveTo}
-Reason: ${data.reason}
-Leave Type: ${data.leaveType}
-Adjustment: ${data.adjustments}
-Day Type: ${data.dayType || "-"}
-Half Type: ${data.halfType || "-"}
-      `
-    })
-    .then(() => console.log("✅ Leave email sent to HOD"))
-    .catch(err => console.log("⚠️ Leave email failed:", err.message));
+      text: `New leave submitted`
+    });
 
   } catch (err) {
-    console.log("LEAVE APPLY ERROR:", err);
-    res.status(500).json({ error: "Failed to save leave" });
+    res.status(500).json({ error: "Failed" });
   }
 });
 
-/* ================= GET LEAVES ================= */
 /* ================= GET LEAVES ================= */
 app.get("/api/leaves", async (req, res) => {
   try {
+    const Leave = mongoose.model("Leave");
     const leaves = await Leave.find().lean();
-
-    const formattedLeaves = leaves.map(leave => {
-      let days = 0;
-
-      if (leave.leaveFrom && leave.leaveTo) {
-        const from = new Date(leave.leaveFrom);
-        const to = new Date(leave.leaveTo);
-
-        days = Math.ceil(
-          (to - from) / (1000 * 60 * 60 * 24)
-        ) + 1;
-      }
-
-      return {
-        ...leave,
-        userEmail: leave.userEmail || leave.user || leave.email,
-        email: leave.email || leave.userEmail || leave.user,
-        days: days,
-        totalDays: days
-      };
-    });
-
-    res.json(formattedLeaves);
-
+    res.json(leaves);
   } catch (err) {
-    console.log("GET LEAVES ERROR:", err);
-    res.status(500).json({ error: "Failed to fetch leaves" });
+    res.status(500).json({ error: "Failed" });
   }
 });
+
 /* ================= UPDATE LEAVE ================= */
 app.put("/api/leaves/:id", async (req, res) => {
   try {
-    const { status, rejectReason } = req.body;
-
-    let updateData = { status };
-
-    if (status === "Rejected") {
-      updateData.rejectReason = rejectReason;
-      updateData.notification = `❌ Your leave is rejected: ${rejectReason}`;
-    }
-
-    if (status === "Approved") {
-      updateData.notification = "✅ Your leave is approved";
-    }
+    const Leave = mongoose.model("Leave");
 
     const updated = await Leave.findByIdAndUpdate(
       req.params.id,
-      updateData,
+      req.body,
       { new: true }
     );
 
-    // ✅ THIS MUST BE INSIDE THE SAME async FUNCTION
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: updated.user, // or updated.email if you fix schema
-      subject: `Leave ${updated.status}`,
-      text: `
-Your leave request is ${updated.status}
-
-From: ${updated.leaveFrom}
-To: ${updated.leaveTo}
-
-${updated.status === "Rejected" ? "Reason: " + updated.rejectReason : ""}
-      `
+      to: updated.user,
+      subject: "Leave Status Updated",
+      text: `Status: ${updated.status}`
     });
 
     res.json(updated);
 
   } catch (err) {
-    console.log("UPDATE ERROR:", err);
     res.status(500).json({ error: "Update failed" });
   }
 });
+
 /* ================= SERVER ================= */
 const PORT = process.env.PORT || 5000;
 
