@@ -28,13 +28,13 @@ app.use(cors({
     "http://localhost:5173",
     "https://gtbit-it-lms.netlify.app",
     "https://idyllic-sunshine-a44fa9.netlify.app",
-    "https://hilarious-banoffee-005913.netlify.app"
+    "https://hilarious-banoffee-005913.netlify.app",
+    "https://leavemanagementgtbit.netlify.app"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-
 app.use(express.json());
 
 /* ================= USER SCHEMA ================= */
