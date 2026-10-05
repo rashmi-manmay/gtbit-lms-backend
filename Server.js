@@ -52,7 +52,7 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", UserSchema);
 
-/* ================= LEAVE SCHEMA (FIXED - IMPORTANT) ================= */
+/* ================= LEAVE SCHEMA ================= */
 const LeaveSchema = new mongoose.Schema({
   name: String,
   email: String,
@@ -75,7 +75,9 @@ const LeaveSchema = new mongoose.Schema({
   }
 });
 
-const Leave = mongoose.models.Leave || mongoose.model("Leave", LeaveSchema);
+// IMPORTANT FIX (prevents crash on Render)
+const Leave =
+  mongoose.models.Leave || mongoose.model("Leave", LeaveSchema);
 
 /* ================= DEFAULT HOD ================= */
 const createDefaultHOD = async () => {
@@ -104,7 +106,7 @@ const createDefaultHOD = async () => {
 
     console.log("✅ HOD ready");
   } catch (err) {
-    console.log("❌ HOD error:", err);
+    console.log("❌ HOD error:", err.message);
   }
 };
 
@@ -139,6 +141,7 @@ app.post("/api/register", async (req, res) => {
     });
 
     res.json({ message: "Registered successfully" });
+
   } catch (err) {
     res.status(500).json({ error: "Register failed" });
   }
@@ -178,7 +181,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-/* ================= FORGOT PASSWORD ================= */
+/* ================= FORGOT PASSWORD (SAFE EMAIL) ================= */
 app.post("/api/forgot-password", async (req, res) => {
   try {
     const email = String(req.body.email || "")
@@ -203,12 +206,16 @@ app.post("/api/forgot-password", async (req, res) => {
     const resetLink =
       `https://hilarious-banoffee-005913.netlify.app/reset-password?token=${resetToken}`;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "GTBIT LMS Password Reset",
-      text: `Reset your password:\n\n${resetLink}`
-    });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "GTBIT LMS Password Reset",
+        text: `Reset your password:\n\n${resetLink}`
+      });
+    } catch (err) {
+      console.log("Email failed but ignored:", err.message);
+    }
 
     res.json({ message: "Reset link sent" });
 
@@ -217,19 +224,23 @@ app.post("/api/forgot-password", async (req, res) => {
   }
 });
 
-/* ================= APPLY LEAVE ================= */
+/* ================= APPLY LEAVE (SAFE EMAIL) ================= */
 app.post("/api/leaves", async (req, res) => {
   try {
     const newLeave = await Leave.create(req.body);
 
     res.json(newLeave);
 
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: "itgtbit@gmail.com",
-      subject: "New Leave Request",
-      text: `New leave submitted by ${req.body.name}`
-    });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: "itgtbit@gmail.com",
+        subject: "New Leave Request",
+        text: `New leave submitted by ${req.body.name}`
+      });
+    } catch (err) {
+      console.log("Email failed but ignored:", err.message);
+    }
 
   } catch (err) {
     console.log(err);
@@ -256,12 +267,16 @@ app.put("/api/leaves/:id", async (req, res) => {
       { new: true }
     );
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: updated.email,
-      subject: "Leave Status Updated",
-      text: `Status: ${updated.status}`
-    });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: updated.email,
+        subject: "Leave Status Updated",
+        text: `Status: ${updated.status}`
+      });
+    } catch (err) {
+      console.log("Email failed but ignored:", err.message);
+    }
 
     res.json(updated);
 
