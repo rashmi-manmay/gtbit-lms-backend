@@ -21,6 +21,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS
   }
 });
+
 /* ================= MIDDLEWARE ================= */
 app.use(cors({
   origin: [
@@ -35,6 +36,7 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 app.use(express.json());
 
 /* ================= USER SCHEMA ================= */
@@ -49,6 +51,31 @@ const UserSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model("User", UserSchema);
+
+/* ================= LEAVE SCHEMA (FIXED - IMPORTANT) ================= */
+const LeaveSchema = new mongoose.Schema({
+  name: String,
+  email: String,
+  designation: String,
+  leaveFrom: String,
+  leaveTo: String,
+  leaveType: String,
+  otherLeaveType: String,
+  reason: String,
+  status: {
+    type: String,
+    default: "Pending"
+  },
+  rejectReason: String,
+  adjustments: String,
+  days: Number,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const Leave = mongoose.models.Leave || mongoose.model("Leave", LeaveSchema);
 
 /* ================= DEFAULT HOD ================= */
 const createDefaultHOD = async () => {
@@ -158,18 +185,11 @@ app.post("/api/forgot-password", async (req, res) => {
       .trim()
       .toLowerCase();
 
-    if (!email) {
-      return res.status(400).json({
-        message: "Email address is required."
-      });
-    }
-
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.json({
-        message:
-          "If this email is registered, a reset link has been sent."
+        message: "If this email is registered, a reset link has been sent."
       });
     }
 
@@ -180,34 +200,27 @@ app.post("/api/forgot-password", async (req, res) => {
 
     await user.save();
 
-  const resetLink =
-  `https://hilarious-banoffee-005913.netlify.app/reset-password?token=${resetToken}`;
+    const resetLink =
+      `https://hilarious-banoffee-005913.netlify.app/reset-password?token=${resetToken}`;
+
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: "GTBIT LMS Password Reset",
-      text: `Reset your password:\n\n${resetLink}\n\nValid for 30 minutes.`
+      text: `Reset your password:\n\n${resetLink}`
     });
 
-    res.json({
-      message: "Reset link sent if email exists."
-    });
+    res.json({ message: "Reset link sent" });
 
   } catch (err) {
-    console.log("FORGOT PASSWORD ERROR:", err);
-    res.status(500).json({
-      message: "Failed to process request"
-    });
+    res.status(500).json({ message: "Failed" });
   }
 });
 
-/* ================= LEAVE APPLY ================= */
+/* ================= APPLY LEAVE ================= */
 app.post("/api/leaves", async (req, res) => {
   try {
-    const Leave = mongoose.model("Leave");
-
-    const newLeave = new Leave(req.body);
-    await newLeave.save();
+    const newLeave = await Leave.create(req.body);
 
     res.json(newLeave);
 
@@ -215,30 +228,28 @@ app.post("/api/leaves", async (req, res) => {
       from: process.env.EMAIL_USER,
       to: "itgtbit@gmail.com",
       subject: "New Leave Request",
-      text: `New leave submitted`
+      text: `New leave submitted by ${req.body.name}`
     });
 
   } catch (err) {
-    res.status(500).json({ error: "Failed" });
+    console.log(err);
+    res.status(500).json({ error: "Failed to create leave" });
   }
 });
 
 /* ================= GET LEAVES ================= */
 app.get("/api/leaves", async (req, res) => {
   try {
-    const Leave = mongoose.model("Leave");
-    const leaves = await Leave.find().lean();
+    const leaves = await Leave.find().sort({ createdAt: -1 });
     res.json(leaves);
   } catch (err) {
-    res.status(500).json({ error: "Failed" });
+    res.status(500).json({ error: "Failed to fetch leaves" });
   }
 });
 
 /* ================= UPDATE LEAVE ================= */
 app.put("/api/leaves/:id", async (req, res) => {
   try {
-    const Leave = mongoose.model("Leave");
-
     const updated = await Leave.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -247,7 +258,7 @@ app.put("/api/leaves/:id", async (req, res) => {
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
-      to: updated.user,
+      to: updated.email,
       subject: "Leave Status Updated",
       text: `Status: ${updated.status}`
     });
